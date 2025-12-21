@@ -7,70 +7,113 @@ const _ = require('lodash');
 const { result } = require('lodash');
 const { waitForDebugger } = require('inspector');
 
-// load data
-const centerLng = 8.082397868288922;
-const centerLat = 46.63249422305324;
-const searchRadiusM = 300000;
-const level = "0%2C1%2C2%2C3%2C4%2C7";
-// const level = "1%2C2%2C3%2C4%2C5%2C6%2C7%2C8%2C9";
+// load data - Using new flysafe-api.dji.com API with rectangle coordinates
+const level = "0,1,2,3,7,8,10"; // Note: No URL encoding needed for new API
 
+// Define rectangle coordinates for Switzerland
+// Format: ltlat (top-left lat), ltlng (top-left lng), rblat (bottom-right lat), rblng (bottom-right lng)
 const multiCoordinates = [
-    {centerLng : 7.317681,
-    centerLat : 46.627911,
-    searchRadiusM : 135000},
-    {centerLng : 8.921685,
-    centerLat : 46.718371,
-    searchRadiusM : 135000}
+    // Western Switzerland
+    {
+        ltlat: 47.8,  // North edge
+        ltlng: 5.9,   // West edge
+        rblat: 45.8,  // South edge
+        rblng: 8.0    // East edge
+    },
+    // Eastern Switzerland
+    {
+        ltlat: 47.8,  // North edge
+        ltlng: 8.0,   // West edge
+        rblat: 45.8,  // South edge
+        rblng: 10.5   // East edge
+    }
 ]
 
 const droneModels = {
+    // Mavic Series
     "dji-mavic-3-classic" : "DJI Mavic 3 Classic",
+    "dji-mavic-3-pro" : "DJI Mavic 3 Pro",
+    "dji-mavic-4-pro" : "DJI Mavic 4 Pro",
     "industry-260" : "DJI Mavic 3E/3T/3M",
-    "dji-avata" : "DJI Avata",
-    "dji-avata-2" : "DJI Avata 2",
+    "mavic-pro" : "Mavic Pro",
+    "mavic-2" : "Mavic 2",
+    "mavic-2-enterprise" : "Mavic 2 Enterprise",
+
+    // Mini Series
+    "dji-mini-2" : "DJI Mini 2",
     "dji-mini-3" : "DJI Mini 3",
     "dji-mini-3-pro" : "DJI Mini 3 Pro",
     "dji-mini-4-pro" : "DJI Mini 4 Pro",
+    "dji-mini-4k" : "DJI Mini 4K",
+    "dji-mini-5-pro" : "DJI Mini 5 Pro",
     "dji-mini-se" : "DJI Mini SE",
+    "mavic-mini" : "Mavic Mini",
+
+    // Air Series
     "dji-air-2s" : "DJI Air 2S",
     "dji-air-3" : "DJI Air 3",
+    "dji-air-3s" : "DJI Air 3S",
+    "mavic-air": "Mavic Air",
+    "mavic-air-2" : "Mavic Air 2",
+
+    // FPV/Avata Series
+    "dji-avata" : "DJI Avata",
+    "dji-avata-2" : "DJI Avata 2",
     "dji-fpv" : "DJI FPV",
-    "dji-mini-2" : "DJI Mini 2",
-    "dji-flycart-30" : "DJI FlyCart 30",
-    "mg1p" : "MG-1S/1A/1P-RTK/T10/T16/T20/T30", 
-    "mg-new" : "T10/T20P/T25/T30/T50",
-    "mg-new-t60" : "T60/T25p",
-    "m100" : "M100",
-    "m600-series" : "M600 Series", 
-    "m300-series" : "M300 Series",
-    "m200-series" : "M200 Series",
-    "m350-rtk" : "M350 RTK",
-    "inspire-1-series" : "Inspire 1 Series", 
-    "inspire-2" : "Inspire 2", 
-    "inspire-3" : "Inspire 3",
+    "dji-neo" :  "DJI NEO",
+    "dji-neo-2" : "DJI NEO 2",
+    "dji-flip" : "DJI FLIP",
+
+    // Phantom Series
     "phantom-3-4K" : "Phantom 3 4K",
-    "phantom-3-se" : "Phantom 3 SE", 
-    "phantom-3-standard" : "Phantom 3 Standard", 
-    "phantom-3-advanced" : "Phantom 3 Advanced", 
-    "phantom-3-pro" : "Phantom 3 Pro", 
-    "phantom-4-multispectral" : "Phantom 4 Multispectral",
-    "phantom-4-rtk": "Phantom 4 RTK", 
-    "phantom-4" : "Phantom 4", 
-    "phantom-4-advanced" : "Phantom 4 Advanced", 
+    "phantom-3-se" : "Phantom 3 SE",
+    "phantom-3-standard" : "Phantom 3 Standard",
+    "phantom-3-advanced" : "Phantom 3 Advanced",
+    "phantom-3-pro" : "Phantom 3 Pro",
+    "phantom-4" : "Phantom 4",
+    "phantom-4-advanced" : "Phantom 4 Advanced",
     "phantom-4-pro" : "Phantom 4 Pro",
-    "spark" : "Spark", 
-    "mavic-pro" : "Mavic Pro", 
-    "mavic-2" : "Mavic 2", 
-    "mavic-2-enterprise" : "Mavic 2 Enterprise",
-    "dji-mavic-3" : "DJI Mavic 3",
-    "dji-mavic-3-classic" : "DJI Mavic 3 Classic",
-    "dji-mavic-3-pro" : "DJI Mavic 3 Pro",
-    "mavic-mini" : "Mavic Mini",
-    "mavic-air": "Mavic Air", 
-    "mavic-air-2" : "Mavic Air 2", 
+    "phantom-4-pro-v2" : "Phantom 4 Pro V2.0",
+    "phantom-4-multispectral" : "Phantom 4 Multispectral",
+    "phantom-4-rtk": "Phantom 4 RTK",
+    "spark" : "Spark",
 
+    // Matrice Series (Professional)
+    "m100" : "M100",
+    "m200-series" : "M200 Series",
+    "m30-series" : "M30 Series",
+    "m300-series" : "M300 Series",
+    "m350-rtk" : "M350 RTK",
+    "m-400" : "M400",
+    "m600-series" : "M600 Series",
+    "dji-matrice-3d-3td" : "DJI Matrice 3D/3TD",
+    "dji-matrice-4d-4td" : "DJI Matrice 4D/4TD",
+    "dji-matrice-4t-4e" : "DJI Matrice 4T/4E",
 
+    // Inspire Series
+    "inspire-1-series" : "Inspire 1 Series",
+    "inspire-2" : "Inspire 2",
+    "inspire-3" : "Inspire 3",
 
+    // Agricultural Drones
+    "mg1p" : "MG-1S/1A/1P-RTK",
+    "mg-new" : "T10/T20P/T25/T30/T50",
+    "mg-new-t10" : "T10",
+    "mg-new-t25" : "T25",
+    "mg-new-t25p" : "T25P",
+    "mg-new-t30" : "T30",
+    "mg-new-t40" : "T40",
+    "mg-new-t50" : "T50",
+    "mg-new-t55" : "T55",
+    "mg-new-t60" : "T60",
+    "mg-new-t70" : "T70",
+    "mg-new-t70-s" : "T70-S",
+    "mg-new-t100" : "T100",
+    "mg-new-t100-s" : "T100-S",
+
+    // Logistics Drones
+    "dji-flycart-30" : "DJI FlyCart 30",
+    "dji-flycart-100" : "DJI FlyCart 100"
 };
 
 const defaultDroneType = "DJI Mini 2";
@@ -98,10 +141,6 @@ const zonesOverlappingBorders = [
     "Place de tir des Raclerets",
     "BOHLHOF", "Bohlhof"
 ];
-
-// original: `https://www-api.dji.com/ch/api/geo/areas?lng=${centerLng}&lat=${centerLat}&country=CH&search_radius=${searchRadiusM}&drone=${droneModel}&level=1%2C2%2C4%2C7&zones_mode=total`
-const url_A = `https://www-api.dji.com/ch/api/geo/areas?lng=${centerLng}&lat=${centerLat}&country=CH&search_radius=${searchRadiusM}&drone=`;
-const url_B =  `&level=${level}&zones_mode=total`;
 
 // get date
 let today = new Date();
@@ -173,6 +212,7 @@ async function fetchOldData() {
 
 function addAdditionalDataToOutput(areasByDrones) {
     let dataToOutput = {};
+    dataToOutput.droneMapsVersion = today; // Add version timestamp (same format as BAZL data)
     dataToOutput.defaultDroneType = defaultDroneType;
     dataToOutput.droneTypes = successfullyFetchedDroneTypes;
     dataToOutput.areas = areasByDrones;
@@ -256,57 +296,88 @@ async function getAreasByDroneTypes() {
     let allAreasByAllDrones = {};
     let droneTypes = Object.keys(droneModels);
     counter = 0;
+    let processedCount = 0;
+    const totalDrones = droneTypes.length;
+
+    console.log(`\n📡 Fetching data for ${totalDrones} drone types...\n`);
+
     await Promise.all(droneTypes.map(async(droneType) => {
         try {
             let areasByDroneType = await fetchDataByMultipleCircles(droneType);
-            if (areasByDroneType.code !== 101) {
+
+            if (areasByDroneType && areasByDroneType.code !== 101) {
                 allAreasByAllDrones[droneModels[droneType]] = areasByDroneType;
                 successfullyFetchedDroneTypes.push(droneModels[droneType]);
                 counter += _.size(allAreasByAllDrones[droneModels[droneType]]);
+
+                processedCount++;
+                const areasCount = _.size(areasByDroneType);
+                if (areasCount > 0) {
+                    console.log(`✓ ${processedCount}/${totalDrones}: ${droneType} - ${areasCount} areas`);
+                } else {
+                    console.log(`○ ${processedCount}/${totalDrones}: ${droneType} - 0 areas (no restrictions)`);
+                }
             } else {
-                console.log(droneType + " could no be fetched");
+                processedCount++;
+                console.log(`✗ ${processedCount}/${totalDrones}: ${droneType} - fetch failed`);
             }
         } catch (err) {
-            console.log(err);
+            processedCount++;
+            console.log(`✗ ${processedCount}/${totalDrones}: ${droneType} - error: ${err.message}`);
         };
         await sleep(100);
     }));
-    console.log("total number of fetched areas: " + counter);
+
+    console.log(`\n📊 Summary: ${counter} total areas from ${successfullyFetchedDroneTypes.length}/${totalDrones} drone types\n`);
     return allAreasByAllDrones;
 }
 
 async function fetchDataByMultipleCircles(droneType) {
     let multiResponse = [];
+    let failedFetches = 0;
+    const MAX_RETRIES = 4; // Will try 1 initial + 3 retries = 4 total attempts
+
     for (let i = 0; i < _.size(multiCoordinates); i++) {
-        await sleep(100);
-        const coordinate = multiCoordinates[i];
-        const lat = coordinate.centerLat;
-        const lng = coordinate.centerLng;
-        const rad = coordinate.searchRadiusM;
-        const URL = `https://www-api.dji.com/ch/api/geo/areas?lng=${lng}&lat=${lat}&country=CH&search_radius=${rad}&drone=${droneType}&level=${level}&zones_mode=total`;
+        const rect = multiCoordinates[i];
 
-        // multiple requests for testing:
-        // const response = await multiRequests(URL, droneType);
-        let response = 0;
-        let counter = 0;
+        // NEW API: flysafe-api.dji.com with rectangle coordinates
+        const URL = `https://flysafe-api.dji.com/api/qep/geo/feedback/areas/in_rectangle?ltlat=${rect.ltlat}&ltlng=${rect.ltlng}&rblat=${rect.rblat}&rblng=${rect.rblng}&zones_mode=flysafe_website&drone=${droneType}&level=${level}`;
 
-        while(response == 0) {
-            response = await getData(URL);
-            counter += 1;
-            await sleep(200);
-            if (counter > 3) {
-                console.log("could not fetch " + URL)
-                break;
-            };
+        let response = null;
+        let attemptCount = 0;
+
+        // Retry logic with exponential backoff
+        while(response === null && attemptCount < MAX_RETRIES) {
+            // Exponential backoff: 500ms, 1000ms, 2000ms, 4000ms
+            if (attemptCount > 0) {
+                const backoffTime = 500 * Math.pow(2, attemptCount - 1);
+                await sleep(backoffTime);
+            } else {
+                await sleep(100); // Small delay before first attempt
+            }
+
+            response = await getData(URL, attemptCount);
+            attemptCount += 1;
         };
+
+        // If still null after all retries, it failed
+        if (response === null) {
+            failedFetches++;
+            response = []; // Set to empty array to prevent errors downstream
+        }
 
         multiResponse.push(response);
     }
     await Promise.all(multiResponse);
 
-    let combinedResponses = _.unionBy(multiResponse[0], multiResponse[1], "area_id");
+    // Only log if ALL fetches for this drone failed
+    if (failedFetches === multiCoordinates.length) {
+        console.log(`❌ FAILED: ${droneType} - could not fetch data after ${MAX_RETRIES * multiCoordinates.length} total attempts`);
+    } else if (failedFetches > 0) {
+        console.log(`⚠ PARTIAL: ${droneType} - ${failedFetches}/${multiCoordinates.length} regions failed`);
+    }
 
-    // console.log("response a, b, combined: ", _.size(multiResponse[0]), _.size(multiResponse[1]), _.size(combinedResponses));
+    let combinedResponses = _.unionBy(multiResponse[0], multiResponse[1], "area_id");
 
     return combinedResponses;
 }
@@ -358,18 +429,85 @@ function addAreaByDroneType(existingAreas, newAreas, droneType) {
     return areasWithDroneTypes;
 };
 
-async function getData(url){
-    let response
+async function getData(url, retryCount = 0){
+    const MAX_TIMEOUT = 10000; // 10 seconds timeout
+    let response;
+
     try {
-      response = await fetch(url);
-      const allAreas = await response.json();
+      // Fetch with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), MAX_TIMEOUT);
+
+      response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      clearTimeout(timeoutId);
+
+      // Check HTTP status
+      if (!response.ok) {
+        if (retryCount === 0) {
+          console.log(`⚠ HTTP ${response.status} for URL (will retry)`);
+        }
+        return null;
+      }
+
+      // Parse JSON
+      const jsonResponse = await response.json();
+
+      // Validate response structure
+      if (!jsonResponse) {
+        if (retryCount === 0) {
+          console.log(`⚠ Empty response body (will retry)`);
+        }
+        return null;
+      }
+
+      // NEW API structure: {code: 0, message: {...}, data: {areas: [...]}}
+      // Check for API error code
+      if (jsonResponse.code !== 0) {
+        if (retryCount === 0) {
+          console.log(`⚠ API returned error code ${jsonResponse.code} (will retry)`);
+        }
+        return null;
+      }
+
+      // Extract areas from data object
+      const allAreas = jsonResponse.data;
+      if (!allAreas || !allAreas.areas) {
+        if (retryCount === 0) {
+          console.log(`⚠ Missing 'data.areas' in response (will retry)`);
+        }
+        return null;
+      }
+
+      if (!Array.isArray(allAreas.areas)) {
+        if (retryCount === 0) {
+          console.log(`⚠ 'data.areas' is not an array (will retry)`);
+        }
+        return null;
+      }
+
+      // Filter relevant zones
       const relevantForeignAreas = allAreas.areas.filter(area => _.includes(zonesOverlappingBorders, area.name));
       const swissAreas = allAreas.areas.filter(area => area.country === 'CH');
       const relevantZones = _.union(relevantForeignAreas, swissAreas);
+
+      // Success! Return array (even if empty)
       return relevantZones;
+
     } catch (error) {
-      //console.log("response getData :", error);
-      return 0;
+      // Only log on first attempt to reduce noise
+      if (retryCount === 0) {
+        if (error.name === 'AbortError') {
+          console.log(`⚠ Request timeout after ${MAX_TIMEOUT}ms (will retry)`);
+        } else {
+          console.log(`⚠ Fetch error: ${error.message} (will retry)`);
+        }
+      }
+      return null;
     }
 };
 

@@ -1,0 +1,20 @@
+{
+  "name": "dronemaps-data-updater",
+  "version": "1.0.0",
+  "description": "Weekly automated data retrieval for DroneMaps (BAZL + DJI)",
+  "main": "weekly-update.js",
+  "scripts": {
+    "update": "node weekly-update.js",
+    "update:bazl": "cd \"BAZL Data retriever\" && npm start",
+    "update:dji": "cd \"DJI NoFlyZones/dji_data_retriever\" && npm start"
+  },
+  "keywords": [
+    "drones",
+    "flight-restrictions",
+    "bazl",
+    "dji",
+    "automation"
+  ],
+  "author": "dronemaps",
+  "license": "MIT"
+}
