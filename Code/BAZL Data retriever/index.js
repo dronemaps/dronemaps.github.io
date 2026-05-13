@@ -29,14 +29,83 @@ masterMind();
 async function masterMind() {
     try {
         //testPolylabel()
+        const previousData = await loadPreviousData();
         const BAZLdata = await getBAZLdata();
         const reducedBAZLdata = await pointReductionAndDDD(BAZLdata);
         const labeledBAZLdata = await addLabelCoord(reducedBAZLdata);
         const addedVersionBAZLdata = await AddDateToData(labeledBAZLdata);
+        compareWithPreviousData(previousData, addedVersionBAZLdata);
         exportData(addedVersionBAZLdata, outputPath);
     } catch (err) {
         console.log(err);
     }
+}
+
+function loadPreviousData() {
+    return new Promise(resolve => {
+        const dataDir = path.join('.', 'data');
+        try {
+            const files = fs.readdirSync(dataDir);
+            const bazlFiles = files
+                .filter(f => /^BAZLdata_\d{2}-\d{2}-\d{4}\.json$/.test(f))
+                .filter(f => f !== `BAZLdata_${today}.json`)
+                .map(f => ({ name: f, mtime: fs.statSync(path.join(dataDir, f)).mtime }))
+                .sort((a, b) => b.mtime - a.mtime);
+
+            if (bazlFiles.length === 0) {
+                console.log('No previous BAZL data file found for comparison.');
+                resolve(null);
+                return;
+            }
+
+            const latestFile = path.join(dataDir, bazlFiles[0].name);
+            console.log(`Comparing with previous: ${bazlFiles[0].name}`);
+            fs.readFile(latestFile, 'utf8', (err, data) => {
+                if (err) resolve(null);
+                else resolve(JSON.parse(data));
+            });
+        } catch (err) {
+            resolve(null);
+        }
+    });
+}
+
+function compareWithPreviousData(oldData, newData) {
+    if (!oldData || !oldData.features) {
+        console.log('No previous data available for comparison.');
+        return;
+    }
+
+    const oldIds = new Set(oldData.features.map(f => f.identifier));
+    const newIds = new Set(newData.features.map(f => f.identifier));
+
+    const addedZones = newData.features.filter(f => !oldIds.has(f.identifier));
+    const removedZones = oldData.features.filter(f => !newIds.has(f.identifier));
+
+    console.log('\n' + '='.repeat(60));
+    console.log('BAZL Comparison');
+    console.log('='.repeat(60));
+    console.log(`Total zones: ${oldData.features.length} → ${newData.features.length}`);
+
+    if (addedZones.length === 0 && removedZones.length === 0) {
+        console.log('✓ No changes: same zone identifiers as before.');
+    } else {
+        if (addedZones.length > 0) {
+            console.log(`\n✅ NEW zones (${addedZones.length}):`);
+            addedZones.forEach(z => {
+                const reason = z.reason ? ` [${z.reason}]` : '';
+                console.log(`  + ${z.identifier} — ${z.name || '(no name)'}${reason}`);
+            });
+        }
+        if (removedZones.length > 0) {
+            console.log(`\n❌ REMOVED zones (${removedZones.length}):`);
+            removedZones.forEach(z => {
+                const reason = z.reason ? ` [${z.reason}]` : '';
+                console.log(`  - ${z.identifier} — ${z.name || '(no name)'}${reason}`);
+            });
+        }
+    }
+    console.log('='.repeat(60) + '\n');
 }
 
 async function AddDateToData(labeledBAZLdata) {
